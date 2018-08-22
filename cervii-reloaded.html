@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>cervii reloaded</title>
+	</head>
+	<body id="body" style="background-color: #000000;">
+		<canvas id="c" style="margin: 20px; border: 1px solid #FFFFFF;"></canvas>
+		<style>
+			* {
+				margin: 0;
+			}
+		</style>
+		<script>
+			var c = document.getElementById("c");
+			var body = document.getElementById("body");
+
+			var ctx = c.getContext("2d");
+
+			var pX = 10;
+			var pY = 10;
+			var pAngle = Math.PI / 4;
+
+			var leftPressed = false;
+			var rightPressed = false;
+
+			var exampleSocket = new WebSocket("ws://localhost:1100/cervii-reloaded-ws");
+			exampleSocket.onopen = function (event) {
+				console.log("onopen!!");
+				exampleSocket.send("TEST TEXT TO SEND"); 
+			}
+			exampleSocket.onerror = function (event) {
+				console.log("onerror!!");
+			}
+			exampleSocket.onmessage = function (event) {
+				console.log("onmessage!!: " + event.data);
+			}
+			exampleSocket.onclose = function (event) {
+				console.log("onclose!!");
+			}
+
+			window.onload = function() {
+				c.width = 800;
+				c.height = 800;
+
+				ctx.fillStyle = "#303030";
+				ctx.fillRect(0, 0, c.width, c.height);
+
+				setInterval(doMove, 100 / 3);
+			}
+
+			window.onkeydown = function(event) {
+				if(event.keyCode == 37) {
+					leftPressed = true;
+				} else if(event.keyCode == 39) {
+					rightPressed = true;
+				}
+			}
+
+			window.onkeyup = function(event) {
+				if(event.keyCode == 37) {
+					leftPressed = false;
+				} else if(event.keyCode == 39) {
+					rightPressed = false;
+				}
+			}
+
+			function doMove() {
+				ctx.fillStyle = "#FF4040";
+
+				if(leftPressed) {
+					pAngle += 0.16;
+				}
+				if(rightPressed) {
+					pAngle -= 0.16;
+				}
+
+				var sin = Math.sin(pAngle);
+				var cos = Math.cos(pAngle);
+
+				for(var i = 0; i < 4; i++) {
+					pX += sin;
+					pY += cos;
+
+					for(var j = -2; j <= 2; j++) {
+						ctx.fillRect(Math.round(pX + j * cos), Math.round(pY - j * sin), 2, 2);
+					}
+				}
+			}
+		</script>
+	</body>
+</html>
