@@ -6,86 +6,109 @@
 	<body id="body" style="background-color: #000000;">
 		<canvas id="c" style="margin: 20px; border: 1px solid #FFFFFF;"></canvas>
 		<style>
-			* {
-				margin: 0;
-			}
+* {
+	margin: 0;
+}
 		</style>
 		<script>
-			var c = document.getElementById("c");
-			var body = document.getElementById("body");
+var body = document.getElementById("body");
+var c = document.getElementById("c");
+var ctx = c.getContext("2d");
 
-			var ctx = c.getContext("2d");
+var colors = [
+	"#FF4040",
+	"#40FF40"
+];
 
-			var pX = 10;
-			var pY = 10;
-			var pAngle = Math.PI / 4;
+var players = [];
+var pnum;
 
-			var leftPressed = false;
-			var rightPressed = false;
+var leftPressed = false;
+var rightPressed = false;
 
-			var exampleSocket = new WebSocket("ws://localhost:1100/cervii-reloaded-ws");
-			exampleSocket.onopen = function (event) {
-				console.log("onopen!!");
-				exampleSocket.send("TEST TEXT TO SEND"); 
+window.onload = function() {
+	c.width = 800;
+	c.height = 800;
+
+	ctx.fillStyle = "#303030";
+	ctx.fillRect(0, 0, c.width, c.height);
+}
+
+window.onkeydown = function(event) {
+	if (event.keyCode == 37) {
+		leftPressed = true;
+	} else if (event.keyCode == 39) {
+		rightPressed = true;
+	}
+}
+
+window.onkeyup = function(event) {
+	if (event.keyCode == 37) {
+		leftPressed = false;
+	} else if (event.keyCode == 39) {
+		rightPressed = false;
+	}
+}
+
+var ws = new WebSocket("ws://localhost:1100/cervii-reloaded-ws");
+ws.onopen = function(event) {
+	ws.send("R");
+}
+ws.onmessage = function(event) {
+	var parts = event.data.split(" ");
+
+	if (parts.length == 1 && parts[0] === "P") {
+		ws.send("A");
+	} else if (parts.length == 8 && parts[0] == "S") {
+		pnum = parseInt(parts[1]);
+		players = [{
+			x: parseInt(parts[2]),
+			y: parseInt(parts[3]),
+			angle: parseInt(parts[4]) * Math.PI / 180
+		}, {
+			x: parseInt(parts[5]),
+			y: parseInt(parts[6]),
+			angle: parseInt(parts[7]) * Math.PI / 180
+		}];
+
+		setInterval(doMove, 100 / 3);
+	}
+}
+ws.onerror = function(event) {
+	console.log("onerror!!");
+}
+ws.onclose = function(event) {
+	console.log("onclose!!");
+}
+
+function doMove() {
+	if (leftPressed && !rightPressed) {
+		players[pnum - 1] += 0.16;
+		ws.send("1");
+	} else if (rightPressed && !leftPressed) {
+		players[pnum - 1] -= 0.16;
+		ws.send("2");
+	} else {
+		ws.send("0");
+	}
+
+	for (var i = 0; i < players.length; i++) {
+		var p = players[i];
+
+		var sin = Math.sin(p.angle);
+		var cos = Math.cos(p.angle);
+
+		ctx.fillStyle = colors[i];
+		for (var j = 0; j < 4; j++) {
+			p.x += sin;
+			p.y += cos;
+
+			for (var k = -2; k <= 2; k++) {
+				ctx.fillRect(Math.round(p.x + k * cos), Math.round(p.y - k * sin), 2, 2);
 			}
-			exampleSocket.onerror = function (event) {
-				console.log("onerror!!");
-			}
-			exampleSocket.onmessage = function (event) {
-				console.log("onmessage!!: " + event.data);
-			}
-			exampleSocket.onclose = function (event) {
-				console.log("onclose!!");
-			}
-
-			window.onload = function() {
-				c.width = 800;
-				c.height = 800;
-
-				ctx.fillStyle = "#303030";
-				ctx.fillRect(0, 0, c.width, c.height);
-
-				setInterval(doMove, 100 / 3);
-			}
-
-			window.onkeydown = function(event) {
-				if(event.keyCode == 37) {
-					leftPressed = true;
-				} else if(event.keyCode == 39) {
-					rightPressed = true;
-				}
-			}
-
-			window.onkeyup = function(event) {
-				if(event.keyCode == 37) {
-					leftPressed = false;
-				} else if(event.keyCode == 39) {
-					rightPressed = false;
-				}
-			}
-
-			function doMove() {
-				ctx.fillStyle = "#FF4040";
-
-				if(leftPressed) {
-					pAngle += 0.16;
-				}
-				if(rightPressed) {
-					pAngle -= 0.16;
-				}
-
-				var sin = Math.sin(pAngle);
-				var cos = Math.cos(pAngle);
-
-				for(var i = 0; i < 4; i++) {
-					pX += sin;
-					pY += cos;
-
-					for(var j = -2; j <= 2; j++) {
-						ctx.fillRect(Math.round(pX + j * cos), Math.round(pY - j * sin), 2, 2);
-					}
-				}
-			}
+		}
+	}
+}
 		</script>
 	</body>
 </html>
