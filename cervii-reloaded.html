@@ -3,16 +3,38 @@
 	<head>
 		<title>cervii reloaded</title>
 	</head>
-	<body id="body" style="background-color: #000000;">
-		<canvas id="c" style="margin: 20px; border: 1px solid #FFFFFF;"></canvas>
+	<body id="body" style="background-color: #000000; margin: 10px; overflow: hidden;">
+		<div id="cOverlay" style="position: absolute; text-align: center;">
+			<input id="controlButton" type="button" value="Connecting" disabled
+				style="position: relative; top: 380px; font-size: 2em;">
+		</div>
+		<canvas id="c" style="border: 1px solid #FFFFFF;" width="800" height="800"></canvas>
 		<style>
 * {
 	margin: 0;
+	padding: 0;
+	border-width: 0;
+	font-size: 1em;
+	vertical-align: baseline;
+}
+
+input {
+	border: 1px solid #808080;
+	padding: 0.2em 0.3em 0.2em 0.3em;
+}
+
+input[type=button] {
+	background-color: #E0E0E0;
+}
+
+input[type=button]:active {
+	background-color: #A0A0A0;
 }
 		</style>
 		<script>
-var body = document.getElementById("body");
 var c = document.getElementById("c");
+var cOverlay = document.getElementById("cOverlay");
+var controlButton = document.getElementById("controlButton");
 var ctx = c.getContext("2d");
 
 var colors = [
@@ -20,7 +42,10 @@ var colors = [
 	"#40FF40"
 ];
 
-var status;
+var ws;
+var failures = 0;
+
+var status = "N";
 var players;
 var myNumber;
 var interval;
@@ -29,18 +54,19 @@ var leftPressed = false;
 var rightPressed = false;
 
 window.onload = function() {
-	c.width = 800;
-	c.height = 800;
-
-	ctx.fillStyle = "#303030";
-	ctx.fillRect(0, 0, c.width, c.height);
+	resizeCanvas();
+	resetBoard();
 }
+
+window.onresize = resizeCanvas;
 
 window.onkeydown = function(event) {
 	if (event.keyCode === 37) {
 		leftPressed = true;
 	} else if (event.keyCode === 39) {
 		rightPressed = true;
+	} else if ((event.keyCode === 32 || event.keyCode === 13) && status === "C") {
+		prepareForGame();
 	}
 }
 
@@ -52,22 +78,60 @@ window.onkeyup = function(event) {
 	}
 }
 
-var ws = new WebSocket("wss://home.jirik.us/cervii-reloaded-ws");
-ws.onopen = function(event) {
-	ws.send("R");
-	status = "W";
+controlButton.onmousedown = function(event) {
+	if (status === "C") {
+		prepareForGame();
+	}
+	return false;
 }
-ws.onmessage = function(event) {
+
+function resizeCanvas() {
+	var size = Math.min(window.innerWidth, window.innerHeight) - 22;
+
+	c.style.width = size + "px";
+	c.style.height = size + "px";
+	cOverlay.style.width = size + "px";
+	cOverlay.style.height = size + "px";
+	controlButton.style.top = (size / 2 - 20) + "px";
+}
+
+function wsOnOpen(event) {
+	status = "C";
+	controlButton.disabled = false;
+	controlButton.value = "Start";
+	controlButton.style.visibility = "visible";
+
+	failures = 0;
+}
+
+function wsOnMessage(event) {
 	if (!processMsg(event.data)) {
 		console.log("Invalid message: " + event.data);
 	}
 }
-ws.onerror = function(event) {
-	console.log("onerror!!");
+
+function wsOnClose(event) {
+	if (status == "S") {
+		stopGame();
+	}
+
+	failures++;
+
+	controlButton.disabled = true;
+	controlButton.value = "Disconnected, trying to reconnect (" + failures + ")";
+	controlButton.style.visibility = "visible";
+
+	status = "N";
+	wsInit();
 }
-ws.onclose = function(event) {
-	console.log("onclose!!");
+
+function wsInit() {
+	ws = new WebSocket("wss://home.jirik.us/cervii-reloaded-ws");
+	ws.onopen = wsOnOpen;
+	ws.onmessage = wsOnMessage;
+	ws.onclose = wsOnClose;
 }
+wsInit();
 
 function processMsg(msg) {
 	var parts = msg.split(" ");
@@ -104,6 +168,10 @@ function processMsg(msg) {
 		players = ps;
 		myNumber = mn;
 		interval = setInterval(doMove, 100 / 3);
+
+		controlButton.style.visibility = "hidden";
+
+		resetBoard();
 		return true;
 	} else if (status === "S" && parts.length === 2 && (parts[0] === "0" || parts[0] === "1" || parts[0] === "2")) {
 		var pnum = parseInt(parts[1]);
@@ -119,11 +187,20 @@ function processMsg(msg) {
 		advancePlayer(pnum);
 		return true;
 	} else if (status === "S" && parts.length === 2 && parts[0] === "E") {
-		clearInterval(interval);
-		status = undefined;
-		players = undefined;
-		myNumber = undefined;
-		interval = undefined;
+		var winner = parseInt(parts[1]);
+		if (isNaN(winner) || winner < 1 || winner > players.length) {
+			return false;
+		}
+
+		controlButton.disabled = false;
+		if (myNumber == winner) {
+			controlButton.value = "Winner!";
+		} else {
+			controlButton.value = "defeated";
+		}
+		controlButton.style.visibility = "visible";
+
+		stopGame();
 		return true;
 	} else {
 		return false;
@@ -159,6 +236,27 @@ function advancePlayer(pnum) {
 			ctx.fillRect(Math.round(p.x + k * sin), Math.round(p.y - k * cos), 2, 2);
 		}
 	}
+}
+
+function stopGame() {
+	clearInterval(interval);
+	players = undefined;
+	myNumber = undefined;
+	interval = undefined;
+	status = "C";
+}
+
+function prepareForGame() {
+	ws.send("R");
+	controlButton.disabled = true;
+	controlButton.value = "Waiting for other player";
+	controlButton.style.visibility = "visible";
+	status = "W";
+}
+
+function resetBoard() {
+	ctx.fillStyle = "#303030";
+	ctx.fillRect(0, 0, c.width, c.height);
 }
 		</script>
 	</body>
