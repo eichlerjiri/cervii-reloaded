@@ -2,6 +2,7 @@
 <html>
 	<head>
 		<title>cervii reloaded</title>
+		<meta name="viewport" content="initial-scale=1, user-scalable=0">
 	</head>
 	<body id="body" style="background-color: #000000; margin: 10px; overflow: hidden;">
 		<div id="cOverlay" style="position: absolute; text-align: center;">
@@ -51,7 +52,9 @@ var myNumber;
 var interval;
 
 var leftPressed = false;
+var leftTouches = [];
 var rightPressed = false;
+var rightTouches = [];
 
 window.onload = function() {
 	resizeCanvas();
@@ -78,6 +81,36 @@ window.onkeyup = function(event) {
 	}
 }
 
+c.ontouchstart = function(event) {
+	for (var i = 0; i < event.changedTouches.length; i++) {
+		var touch = event.changedTouches[i];
+		if (touch.clientX < c.offsetWidth / 2) {
+			leftTouches.push(touch.identifier);
+		} else {
+			rightTouches.push(touch.identifier);
+		}
+	}
+}
+
+c.ontouchend = handleTouchEnd;
+c.ontouchcancel = handleTouchEnd;
+
+function handleTouchEnd(event) {
+	for (var i = 0; i < event.changedTouches.length; i++) {
+		var touch = event.changedTouches[i];
+		for (var j = 0; j < leftTouches.length; j++) {
+			if (touch.identifier === leftTouches[j]) {
+				leftTouches.splice(j--, 1);
+			}
+		}
+		for (var j = 0; j < rightTouches.length; j++) {
+			if (touch.identifier === rightTouches[j]) {
+				rightTouches.splice(j--, 1);
+			}
+		}
+	}
+}
+
 controlButton.onmousedown = function(event) {
 	if (status === "C") {
 		prepareForGame();
@@ -99,7 +132,7 @@ function wsOnOpen(event) {
 	status = "C";
 	controlButton.disabled = false;
 	controlButton.value = "Start";
-	controlButton.style.visibility = "visible";
+	cOverlay.style.visibility = "visible";
 
 	failures = 0;
 }
@@ -111,7 +144,7 @@ function wsOnMessage(event) {
 }
 
 function wsOnClose(event) {
-	if (status == "S") {
+	if (status === "S") {
 		stopGame();
 	}
 
@@ -119,7 +152,7 @@ function wsOnClose(event) {
 
 	controlButton.disabled = true;
 	controlButton.value = "Disconnected, trying to reconnect (" + failures + ")";
-	controlButton.style.visibility = "visible";
+	cOverlay.style.visibility = "visible";
 
 	status = "N";
 	wsInit();
@@ -169,7 +202,7 @@ function processMsg(msg) {
 		myNumber = mn;
 		interval = setInterval(doMove, 100 / 3);
 
-		controlButton.style.visibility = "hidden";
+		cOverlay.style.visibility = "hidden";
 
 		resetBoard();
 		return true;
@@ -193,12 +226,12 @@ function processMsg(msg) {
 		}
 
 		controlButton.disabled = false;
-		if (myNumber == winner) {
+		if (myNumber === winner) {
 			controlButton.value = "Winner!";
 		} else {
 			controlButton.value = "defeated";
 		}
-		controlButton.style.visibility = "visible";
+		cOverlay.style.visibility = "visible";
 
 		stopGame();
 		return true;
@@ -208,10 +241,13 @@ function processMsg(msg) {
 }
 
 function doMove() {
-	if (leftPressed && !rightPressed) {
+	var left = leftPressed || leftTouches.length > 0;
+	var right = rightPressed || rightTouches.length > 0;
+
+	if (left && !right) {
 		players[myNumber - 1].angle -= 0.16;
 		ws.send("1");
-	} else if (rightPressed && !leftPressed) {
+	} else if (right && !left) {
 		players[myNumber - 1].angle += 0.16;
 		ws.send("2");
 	} else {
@@ -250,7 +286,7 @@ function prepareForGame() {
 	ws.send("R");
 	controlButton.disabled = true;
 	controlButton.value = "Waiting for other player";
-	controlButton.style.visibility = "visible";
+	cOverlay.style.visibility = "visible";
 	status = "W";
 }
 
