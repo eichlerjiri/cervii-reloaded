@@ -81,10 +81,10 @@ window.onkeyup = function(event) {
 	}
 }
 
-c.ontouchstart = function(event) {
+window.ontouchstart = function(event) {
 	for (var i = 0; i < event.changedTouches.length; i++) {
 		var touch = event.changedTouches[i];
-		if (touch.clientX < c.offsetWidth / 2) {
+		if (touch.clientX < window.innerWidth / 2) {
 			leftTouches.push(touch.identifier);
 		} else {
 			rightTouches.push(touch.identifier);
@@ -92,8 +92,8 @@ c.ontouchstart = function(event) {
 	}
 }
 
-c.ontouchend = handleTouchEnd;
-c.ontouchcancel = handleTouchEnd;
+window.ontouchend = handleTouchEnd;
+window.ontouchcancel = handleTouchEnd;
 
 function handleTouchEnd(event) {
 	for (var i = 0; i < event.changedTouches.length; i++) {
@@ -132,7 +132,7 @@ function wsOnOpen(event) {
 	status = "C";
 	controlButton.disabled = false;
 	controlButton.value = "Start";
-	cOverlay.style.visibility = "visible";
+	controlButton.style.visibility = "visible";
 
 	failures = 0;
 }
@@ -152,7 +152,7 @@ function wsOnClose(event) {
 
 	controlButton.disabled = true;
 	controlButton.value = "Disconnected, trying to reconnect (" + failures + ")";
-	cOverlay.style.visibility = "visible";
+	controlButton.style.visibility = "visible";
 
 	status = "N";
 	wsInit();
@@ -202,7 +202,7 @@ function processMsg(msg) {
 		myNumber = mn;
 		interval = setInterval(doMove, 100 / 3);
 
-		cOverlay.style.visibility = "hidden";
+		controlButton.style.visibility = "hidden";
 
 		resetBoard();
 		return true;
@@ -231,7 +231,7 @@ function processMsg(msg) {
 		} else {
 			controlButton.value = "defeated";
 		}
-		cOverlay.style.visibility = "visible";
+		controlButton.style.visibility = "visible";
 
 		stopGame();
 		return true;
@@ -286,7 +286,7 @@ function prepareForGame() {
 	ws.send("R");
 	controlButton.disabled = true;
 	controlButton.value = "Waiting for other player";
-	cOverlay.style.visibility = "visible";
+	controlButton.style.visibility = "visible";
 	status = "W";
 }
 
