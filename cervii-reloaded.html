@@ -7,7 +7,7 @@
 	<body id="body" style="background-color: #000000; margin: 10px; overflow: hidden;">
 		<div id="cOverlay" style="position: absolute; text-align: center;">
 			<input id="controlButton" type="button" value="Connecting" disabled
-				style="position: relative; top: 380px; font-size: 2em;">
+				style="position: relative; font-size: 2em;">
 		</div>
 		<canvas id="c" style="border: 1px solid #FFFFFF;" width="800" height="800"></canvas>
 		<style>
@@ -125,7 +125,7 @@ function resizeCanvas() {
 	c.style.height = size + "px";
 	cOverlay.style.width = size + "px";
 	cOverlay.style.height = size + "px";
-	controlButton.style.top = (size / 2 - 20) + "px";
+	controlButton.style.top = (size / 2 - controlButton.clientHeight / 2) + "px";
 }
 
 function wsOnOpen(event) {
